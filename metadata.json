@@ -1,6 +1,8 @@
 {
   "name": "Home Workout Pro",
-  "description": "Production-ready Home Workout & Fitness app with exercises, challenges, trackers, diet plans, voice coach, and bilingual support.",
+  "description": "Comprehensive home workout app with custom exercise routines, progress tracking, diet plans, and AI fitness chat.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -1,164 +1,111 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.InfiniteRepeatableSpec
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.example.ui.theme.PrimaryOrange
-import com.example.ui.theme.SecondaryCyan
 
 @Composable
 fun ExerciseAnimationView(
     animationType: String,
-    isPlaying: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "WorkoutPoseTransition")
-    
-    val phaseProgress by if (isPlaying) {
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1200, easing = LinearOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "PhaseAnimation"
-        )
-    } else {
-        rememberUpdatedState(0.5f)
-    }
+    val transition = rememberInfiniteTransition(label = "exercise_anim")
+    val progress by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = InfiniteRepeatableSpec(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "anim_progress"
+    )
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val accentColor = MaterialTheme.colorScheme.tertiary
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(220.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.surfaceContainer,
-                        MaterialTheme.colorScheme.surface
-                    )
-                )
-            ),
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .testTag("exercise_animation_container"),
         contentAlignment = Alignment.Center
     ) {
-        // Glowing background energy ring
         Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width / 2f, size.height / 2f)
-            val radius = 80.dp.toPx()
-            drawCircle(
-                color = PrimaryOrange.copy(alpha = 0.12f),
-                radius = radius + (phaseProgress * 15.dp.toPx()),
-                center = center
-            )
-            drawCircle(
-                color = SecondaryCyan.copy(alpha = 0.08f),
-                radius = radius + 30.dp.toPx(),
-                center = center
-            )
-        }
 
-        // Animated Body Stick Figure Pose
-        Canvas(modifier = Modifier.size(200.dp, 180.dp)) {
-            val w = size.width
-            val h = size.height
-            val primaryColor = PrimaryOrange
-            val accentColor = SecondaryCyan
-            val strokeWidthVal = 8.dp.toPx()
-
-            when (animationType.uppercase()) {
-                "PUSHUP" -> {
-                    // Pushup Pose: Y shifts between up and down
-                    val yOffset = phaseProgress * 35.dp.toPx()
-                    val head = Offset(w * 0.25f, h * 0.35f + yOffset)
-                    val shoulder = Offset(w * 0.35f, h * 0.42f + yOffset)
-                    val hip = Offset(w * 0.65f, h * 0.48f + yOffset * 0.6f)
-                    val feet = Offset(w * 0.88f, h * 0.55f)
-                    val hand = Offset(w * 0.35f, h * 0.70f)
-
-                    // Draw Head
-                    drawCircle(color = primaryColor, radius = 14.dp.toPx(), center = head)
-                    // Spine
-                    drawLine(color = primaryColor, start = head, end = feet, strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
-                    // Arms (bending)
-                    drawLine(color = accentColor, start = shoulder, end = Offset(w * 0.30f, h * 0.55f + yOffset * 0.5f), strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
-                    drawLine(color = accentColor, start = Offset(w * 0.30f, h * 0.55f + yOffset * 0.5f), end = hand, strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
+            when (animationType.lowercase()) {
+                "pushup" -> {
+                    val offsetY = (progress * 30.dp.toPx())
+                    // Torso
+                    drawLine(
+                        color = primaryColor,
+                        start = Offset(center.x - 60.dp.toPx(), center.y + offsetY),
+                        end = Offset(center.x + 60.dp.toPx(), center.y + 15.dp.toPx() + offsetY),
+                        strokeWidth = 12.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                    // Head
+                    drawCircle(
+                        color = accentColor,
+                        radius = 16.dp.toPx(),
+                        center = Offset(center.x - 80.dp.toPx(), center.y - 10.dp.toPx() + offsetY)
+                    )
                 }
-                "SQUAT" -> {
-                    // Squat Pose: Hips drop down
-                    val squatFactor = phaseProgress * 40.dp.toPx()
-                    val head = Offset(w * 0.5f, h * 0.22f + squatFactor)
-                    val hip = Offset(w * 0.5f, h * 0.50f + squatFactor)
-                    val knee = Offset(w * 0.65f - squatFactor * 0.3f, h * 0.65f + squatFactor * 0.5f)
-                    val feet = Offset(w * 0.5f, h * 0.85f)
-
-                    drawCircle(color = primaryColor, radius = 14.dp.toPx(), center = head)
-                    drawLine(color = primaryColor, start = head, end = hip, strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
-                    // Legs
-                    drawLine(color = accentColor, start = hip, end = knee, strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
-                    drawLine(color = accentColor, start = knee, end = feet, strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
-                }
-                "JUMPING_JACKS" -> {
-                    // Arms & Legs spreading wide
-                    val spread = phaseProgress * 30.dp.toPx()
-                    val head = Offset(w * 0.5f, h * 0.2f - (phaseProgress * 10.dp.toPx()))
-                    val hip = Offset(w * 0.5f, h * 0.55f)
-
-                    drawCircle(color = primaryColor, radius = 14.dp.toPx(), center = head)
-                    drawLine(color = primaryColor, start = head, end = hip, strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
-                    // Left Arm up/down
-                    drawLine(color = accentColor, start = Offset(w * 0.5f, h * 0.3f), end = Offset(w * 0.2f - spread * 0.5f, h * 0.2f - spread), strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
-                    // Right Arm up/down
-                    drawLine(color = accentColor, start = Offset(w * 0.5f, h * 0.3f), end = Offset(w * 0.8f + spread * 0.5f, h * 0.2f - spread), strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
-                    // Left Leg
-                    drawLine(color = primaryColor, start = hip, end = Offset(w * 0.35f - spread, h * 0.85f), strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
-                    // Right Leg
-                    drawLine(color = primaryColor, start = hip, end = Offset(w * 0.65f + spread, h * 0.85f), strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
+                "squat" -> {
+                    val squatY = (progress * 40.dp.toPx())
+                    // Torso
+                    drawLine(
+                        color = primaryColor,
+                        start = Offset(center.x, center.y - 40.dp.toPx() + squatY),
+                        end = Offset(center.x, center.y + 20.dp.toPx() + squatY),
+                        strokeWidth = 14.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                    // Head
+                    drawCircle(
+                        color = accentColor,
+                        radius = 18.dp.toPx(),
+                        center = Offset(center.x, center.y - 65.dp.toPx() + squatY)
+                    )
                 }
                 else -> {
-                    // Default Plank / Core pose
-                    val head = Offset(w * 0.2f, h * 0.45f)
-                    val feet = Offset(w * 0.85f, h * 0.50f)
-                    drawCircle(color = primaryColor, radius = 14.dp.toPx(), center = head)
-                    drawLine(color = primaryColor, start = head, end = feet, strokeWidth = strokeWidthVal, cap = StrokeCap.Round)
+                    // Default Pulsing Figure
+                    val radius = (35.dp.toPx() + progress * 15.dp.toPx())
+                    drawCircle(
+                        color = primaryColor.copy(alpha = 0.8f),
+                        radius = radius,
+                        center = center
+                    )
+                    drawCircle(
+                        color = accentColor,
+                        radius = 16.dp.toPx(),
+                        center = center
+                    )
                 }
             }
-        }
-
-        // Live HD Animation Pill Tag
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp)
-                .clip(CircleShape)
-                .background(PrimaryOrange.copy(alpha = 0.9f))
-                .padding(horizontal = 10.dp, vertical = 4.dp)
-        ) {
-            Text(
-                text = "HD ANIMATED COACH",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
         }
     }
 }

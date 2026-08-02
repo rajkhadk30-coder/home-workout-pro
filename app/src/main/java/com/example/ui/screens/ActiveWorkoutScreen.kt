@@ -1,96 +1,79 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.Exercise
-import com.example.data.model.L10n
-import com.example.data.model.Language
-import com.example.ui.theme.PrimaryOrange
-import com.example.ui.theme.SecondaryCyan
+import com.example.data.model.WorkoutPlan
 import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActiveWorkoutScreen(
-    exercises: List<Exercise>,
-    sessionTitle: String,
-    language: Language,
-    onSpeakVoice: (String) -> Unit,
-    onFinishWorkout: (durationSec: Int, totalCalories: Int, count: Int) -> Unit,
-    onCancelWorkout: () -> Unit
+    plan: WorkoutPlan,
+    onWorkoutComplete: (durationSeconds: Int, totalCalories: Int) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    if (exercises.isEmpty()) {
-        onCancelWorkout()
-        return
-    }
-
-    var currentIndex by remember { mutableStateOf(0) }
-    val currentExercise = exercises[currentIndex]
+    var currentExerciseIndex by remember { mutableIntStateOf(0) }
+    val currentExercise = plan.exercises.getOrNull(currentExerciseIndex)
 
     var isPaused by remember { mutableStateOf(false) }
-    var isResting by remember { mutableStateOf(false) }
+    var secondsElapsed by remember { mutableIntStateOf(0) }
+    var exerciseTimer by remember { mutableIntStateOf(currentExercise?.durationSeconds ?: 30) }
 
-    var exerciseTimer by remember { mutableStateOf(currentExercise.durationSeconds) }
-    var restTimer by remember { mutableStateOf(currentExercise.restTimeSeconds) }
-
-    var totalElapsedSeconds by remember { mutableStateOf(0) }
-    var totalCaloriesBurned by remember { mutableStateOf(0) }
-
-    // Initial voice prompt when starting exercise
-    LaunchedEffect(currentIndex, isResting) {
-        if (isResting) {
-            val restMsg = if (language == Language.NEPALI) "आराम गर्नुहोस्, १५ सेकेन्ड" else "Take a rest for ${currentExercise.restTimeSeconds} seconds"
-            onSpeakVoice(restMsg)
-            restTimer = currentExercise.restTimeSeconds
-        } else {
-            val voiceMsg = if (language == Language.NEPALI) currentExercise.voiceGuidanceNp else currentExercise.voiceGuidanceEn
-            onSpeakVoice("Ready! $voiceMsg")
-            exerciseTimer = currentExercise.durationSeconds
-        }
+    LaunchedEffect(currentExerciseIndex) {
+        exerciseTimer = currentExercise?.durationSeconds ?: 30
     }
 
-    // Main Timer Loop
-    LaunchedEffect(isPaused, isResting, currentIndex) {
-        while (!isPaused) {
-            delay(1000)
-            totalElapsedSeconds++
-
-            if (isResting) {
-                if (restTimer > 1) {
-                    restTimer--
-                } else {
-                    isResting = false
-                    if (currentIndex < exercises.size - 1) {
-                        currentIndex++
-                    } else {
-                        onFinishWorkout(totalElapsedSeconds, totalCaloriesBurned, exercises.size)
-                        break
-                    }
-                }
-            } else {
-                if (exerciseTimer > 1) {
+    LaunchedEffect(isPaused) {
+        while (!isPaused && currentExercise != null) {
+            delay(1000L)
+            secondsElapsed++
+            if (currentExercise.durationSeconds > 0) {
+                if (exerciseTimer > 0) {
                     exerciseTimer--
                 } else {
-                    totalCaloriesBurned += currentExercise.caloriesBurned
-                    if (currentIndex < exercises.size - 1) {
-                        isResting = true
+                    if (currentExerciseIndex < plan.exercises.size - 1) {
+                        currentExerciseIndex++
                     } else {
-                        onFinishWorkout(totalElapsedSeconds, totalCaloriesBurned, exercises.size)
+                        onWorkoutComplete(secondsElapsed, plan.totalCalories)
                         break
                     }
                 }
@@ -98,226 +81,175 @@ fun ActiveWorkoutScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(sessionTitle, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onCancelWorkout) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+    if (currentExercise == null) return
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Top Bar
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.testTag("exit_workout_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onBackground
                 )
+            }
+
+            Text(
+                text = "${currentExerciseIndex + 1} / ${plan.exercises.size}",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground
             )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
-        Box(
+
+            Spacer(modifier = Modifier.size(48.dp))
+        }
+
+        // Progress Bar
+        LinearProgressIndicator(
+            progress = { (currentExerciseIndex + 1).toFloat() / plan.exercises.size },
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(20.dp)
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .testTag("workout_progress_bar"),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Animated Exercise Preview
+        ExerciseAnimationView(
+            animationType = currentExercise.animationType,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Exercise Title & Reps/Timer
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Top Queue Progress Bar
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Exercise ${currentIndex + 1} of ${exercises.size}",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryOrange
-                        )
-                        Text(
-                            text = "${totalElapsedSeconds / 60}m ${totalElapsedSeconds % 60}s • $totalCaloriesBurned Kcal",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                    }
+                Text(
+                    text = currentExercise.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(8.dp))
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    LinearProgressIndicator(
-                        progress = { (currentIndex + 1) / exercises.size.toFloat() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(CircleShape),
-                        color = PrimaryOrange,
-                        trackColor = PrimaryOrange.copy(alpha = 0.2f)
+                if (currentExercise.durationSeconds > 0) {
+                    Text(
+                        text = "00:${if (exerciseTimer < 10) "0$exerciseTimer" else "$exerciseTimer"}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 36.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Text(
+                        text = "x${currentExercise.reps}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 36.sp,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
 
-                if (isResting) {
-                    // REST OVERLAY
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 24.dp),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = L10n.getString("rest_time", language),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = SecondaryCyan
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Text(
-                                text = "$restTimer",
-                                style = MaterialTheme.typography.displayLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 64.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            Spacer(modifier = Modifier.height(20.dp))
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Button(
-                                    onClick = { restTimer += 20 },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface)
-                                ) {
-                                    Text(L10n.getString("add_rest", language), color = SecondaryCyan)
-                                }
-
-                                Button(
-                                    onClick = {
-                                        isResting = false
-                                        if (currentIndex < exercises.size - 1) {
-                                            currentIndex++
-                                        }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
-                                ) {
-                                    Text(L10n.getString("skip_rest", language), color = Color.White)
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // ACTIVE EXERCISE DISPLAY
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Animated HD Exercise Graphic
-                        ExerciseAnimationView(
-                            animationType = currentExercise.animationType,
-                            isPlaying = !isPaused
-                        )
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // Exercise Name & Target Muscle
-                        Text(
-                            text = if (language == Language.NEPALI) currentExercise.nameNp else currentExercise.nameEn,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Surface(
-                            shape = CircleShape,
-                            color = SecondaryCyan.copy(alpha = 0.15f)
-                        ) {
-                            Text(
-                                text = "Target: ${currentExercise.targetMuscle} • x${currentExercise.repetitions} Reps",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = SecondaryCyan,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // Big Timer Ring Display
-                        Text(
-                            text = "$exerciseTimer",
-                            style = MaterialTheme.typography.displayLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 60.sp,
-                            color = PrimaryOrange
-                        )
-                    }
-                }
-
-                // Bottom Session Action Controls
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Previous
-                    IconButton(
-                        onClick = {
-                            if (currentIndex > 0) currentIndex--
-                        },
-                        enabled = currentIndex > 0
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipPrevious,
-                            contentDescription = "Previous",
-                            tint = if (currentIndex > 0) MaterialTheme.colorScheme.onSurface else Color.Gray,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
-
-                    // Play/Pause
-                    FloatingActionButton(
-                        onClick = { isPaused = !isPaused },
-                        containerColor = PrimaryOrange,
-                        contentColor = Color.White,
-                        modifier = Modifier.size(64.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                            contentDescription = "Pause",
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-
-                    // Next / Skip
-                    IconButton(
-                        onClick = {
-                            if (currentIndex < exercises.size - 1) {
-                                currentIndex++
-                            } else {
-                                onFinishWorkout(totalElapsedSeconds, totalCaloriesBurned, exercises.size)
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipNext,
-                            contentDescription = "Next",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = currentExercise.description,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
+        }
+
+        // Play Controls
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = {
+                    if (currentExerciseIndex > 0) currentExerciseIndex--
+                },
+                enabled = currentExerciseIndex > 0,
+                modifier = Modifier.testTag("prev_exercise_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SkipPrevious,
+                    contentDescription = "Previous",
+                    modifier = Modifier.size(36.dp),
+                    tint = if (currentExerciseIndex > 0) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(
+                onClick = { isPaused = !isPaused },
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .testTag("play_pause_button")
+            ) {
+                Icon(
+                    imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                    contentDescription = if (isPaused) "Play" else "Pause",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            IconButton(
+                onClick = {
+                    if (currentExerciseIndex < plan.exercises.size - 1) {
+                        currentExerciseIndex++
+                    } else {
+                        onWorkoutComplete(secondsElapsed, plan.totalCalories)
+                    }
+                },
+                modifier = Modifier.testTag("next_exercise_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SkipNext,
+                    contentDescription = "Next",
+                    modifier = Modifier.size(36.dp),
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
+        }
+
+        Button(
+            onClick = { onWorkoutComplete(secondsElapsed, plan.totalCalories) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("finish_workout_now_button"),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Finish Workout", fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -1,380 +1,274 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.local.BodyMeasurementEntity
-import com.example.data.local.WaterLogEntity
-import com.example.data.local.WeightLogEntity
-import com.example.data.model.L10n
-import com.example.data.model.Language
-import com.example.ui.theme.AccentGold
-import com.example.ui.theme.AccentGreen
-import com.example.ui.theme.PrimaryOrange
-import com.example.ui.theme.SecondaryCyan
+import com.example.ui.MainViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrackerScreen(
-    language: Language,
-    currentSteps: Int,
-    waterLogs: List<WaterLogEntity>,
-    weightLogs: List<WeightLogEntity>,
-    bodyMeasurements: List<BodyMeasurementEntity>,
-    onAddWater: (Int) -> Unit,
-    onResetWater: () -> Unit,
-    onLogWeight: (Float) -> Unit,
-    onLogMeasurements: (Float, Float, Float, Float, Float) -> Unit,
-    onSimulateSteps: () -> Unit
+    viewModel: MainViewModel,
+    modifier: Modifier = Modifier
 ) {
-    val scrollState = rememberScrollState()
+    val steps by viewModel.dailySteps.collectAsState()
+    val waterMl by viewModel.dailyWaterMl.collectAsState()
+    val profile by viewModel.userProfile.collectAsState()
+    val history by viewModel.workoutHistory.collectAsState()
 
-    // BMI State
-    var heightCmInput by remember { mutableStateOf("172") }
-    var weightKgInput by remember { mutableStateOf("68") }
-    var bmiResult by remember { mutableStateOf<Float?>(23.0f) }
+    val heightM = profile.heightCm / 100f
+    val bmi = if (heightM > 0) profile.weightKg / (heightM * heightM) else 0f
 
-    // BMR State
-    var ageInput by remember { mutableStateOf("24") }
-    var bmrResult by remember { mutableStateOf<Float?>(1680f) }
-
-    // Body Measurements Input
-    var chestInput by remember { mutableStateOf("96") }
-    var waistInput by remember { mutableStateOf("80") }
-    var bicepsInput by remember { mutableStateOf("34") }
-
-    Column(
-        modifier = Modifier
+    LazyColumn(
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(scrollState)
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = L10n.getString("trackers", language),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 1. Step Counter Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = CircleShape, color = PrimaryOrange.copy(alpha = 0.15f)) {
-                            Icon(Icons.Default.DirectionsWalk, contentDescription = null, tint = PrimaryOrange, modifier = Modifier.padding(8.dp))
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = L10n.getString("step_counter", language),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    TextButton(onClick = onSimulateSteps) {
-                        Text("+500 Steps", color = PrimaryOrange, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(
-                        text = "$currentSteps",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = L10n.getString("step_goal", language),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val stepProgress = (currentSteps / 10000f).coerceIn(0f, 1f)
-                LinearProgressIndicator(
-                    progress = { stepProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(CircleShape),
-                    color = PrimaryOrange,
-                    trackColor = PrimaryOrange.copy(alpha = 0.2f)
-                )
-            }
+        item {
+            Text(
+                text = "Activity & Health Tracker",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 2. Water Intake Tracker
-        val totalWater = waterLogs.sumOf { it.amountMl }
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = CircleShape, color = SecondaryCyan.copy(alpha = 0.15f)) {
-                            Icon(Icons.Default.WaterDrop, contentDescription = null, tint = SecondaryCyan, modifier = Modifier.padding(8.dp))
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = L10n.getString("water_tracker", language),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    IconButton(onClick = onResetWater) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Reset", tint = Color.Gray)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(
-                        text = "$totalWater ml",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = SecondaryCyan
-                    )
-                    Text(
-                        text = L10n.getString("water_goal", language),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val waterProgress = (totalWater / 2500f).coerceIn(0f, 1f)
-                LinearProgressIndicator(
-                    progress = { waterProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(CircleShape),
-                    color = SecondaryCyan,
-                    trackColor = SecondaryCyan.copy(alpha = 0.2f)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Button(
-                        onClick = { onAddWater(250) },
-                        colors = ButtonDefaults.buttonColors(containerColor = SecondaryCyan),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("+250ml Glass", color = Color.Black, fontWeight = FontWeight.Bold)
-                    }
-                    Button(
-                        onClick = { onAddWater(500) },
-                        colors = ButtonDefaults.buttonColors(containerColor = SecondaryCyan.copy(alpha = 0.8f)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("+500ml Bottle", color = Color.Black, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 3. BMI & BMR Calculators
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = L10n.getString("bmi_calculator", language),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        value = heightCmInput,
-                        onValueChange = { heightCmInput = it },
-                        label = { Text(L10n.getString("height", language)) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-
-                    OutlinedTextField(
-                        value = weightKgInput,
-                        onValueChange = { weightKgInput = it },
-                        label = { Text(L10n.getString("weight", language)) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Button(
-                    onClick = {
-                        val h = heightCmInput.toFloatOrNull() ?: 172f
-                        val w = weightKgInput.toFloatOrNull() ?: 68f
-                        if (h > 0) {
-                            val hMeters = h / 100f
-                            bmiResult = w / (hMeters * hMeters)
-                            bmrResult = (10 * w) + (6.25f * h) - (5 * 24) + 5
-                            onLogWeight(w)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(L10n.getString("calculate", language), color = Color.White, fontWeight = FontWeight.Bold)
-                }
-
-                bmiResult?.let { bmi ->
-                    Spacer(modifier = Modifier.height(14.dp))
-                    val category = when {
-                        bmi < 18.5f -> "Underweight" to AccentGold
-                        bmi < 24.9f -> "Normal Weight ✅" to AccentGreen
-                        bmi < 29.9f -> "Overweight" to PrimaryOrange
-                        else -> "Obese" to Color.Red
-                    }
+        // Steps Tracker Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("steps_tracker_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "BMI: String.format(\"%.1f\", bmi) -> ${String.format("%.1f", bmi)}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = category.first,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = category.second
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.DirectionsRun,
+                                contentDescription = "Steps",
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.size(8.dp))
+                            Text(text = "Daily Steps", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+
+                        Button(
+                            onClick = { viewModel.addSteps(1000) },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.testTag("add_1000_steps_button")
+                        ) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Text(text = "1000")
+                        }
                     }
-                    bmrResult?.let { bmr ->
-                        Text(
-                            text = "BMR (Daily Burn): ${bmr.toInt()} Kcal/day",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "$steps / ${profile.dailyStepGoal} steps",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { (steps.toFloat() / profile.dailyStepGoal).coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // Water Intake Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("water_tracker_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.WaterDrop,
+                                contentDescription = "Water",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.size(8.dp))
+                            Text(text = "Water Intake", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
 
-        // 4. Body Measurements Tracker
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = L10n.getString("body_measurements", language),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                        Button(
+                            onClick = { viewModel.addWater(250) },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.testTag("add_water_button")
+                        ) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Text(text = "250 ml")
+                        }
+                    }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = chestInput,
-                        onValueChange = { chestInput = it },
-                        label = { Text("Chest (cm)") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "$waterMl / ${profile.dailyWaterGoalMl} ml",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp
                     )
-                    OutlinedTextField(
-                        value = waistInput,
-                        onValueChange = { waistInput = it },
-                        label = { Text("Waist (cm)") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                    OutlinedTextField(
-                        value = bicepsInput,
-                        onValueChange = { bicepsInput = it },
-                        label = { Text("Biceps (cm)") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { (waterMl.toFloat() / profile.dailyWaterGoalMl).coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
+            }
+        }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Button(
-                    onClick = {
-                        val c = chestInput.toFloatOrNull() ?: 96f
-                        val w = waistInput.toFloatOrNull() ?: 80f
-                        val b = bicepsInput.toFloatOrNull() ?: 34f
-                        onLogMeasurements(c, w, b, 55f, 92f)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = SecondaryCyan),
-                    shape = RoundedCornerShape(12.dp)
+        // BMI Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("bmi_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Save Measurements", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Column {
+                        Text(text = "Body Mass Index (BMI)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(
+                            text = if (bmi < 18.5) "Underweight" else if (bmi < 25) "Normal Weight" else "Overweight",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    Text(
+                        text = String.format(Locale.US, "%.1f", bmi),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 28.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        // Workout Log History
+        item {
+            Text(
+                text = "Recent Workout Logs",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+
+        if (history.isEmpty()) {
+            item {
+                Text(
+                    text = "No completed workouts logged yet. Start a session today!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            items(history) { log ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.FitnessCenter,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(modifier = Modifier.size(12.dp))
+                            Column {
+                                Text(text = log.workoutTitle, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = SimpleDateFormat("MMM dd, yyyy - HH:mm", Locale.getDefault()).format(Date(log.dateCompleted)),
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "${log.caloriesBurned} kcal",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }

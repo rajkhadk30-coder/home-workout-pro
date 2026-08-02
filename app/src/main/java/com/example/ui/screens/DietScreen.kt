@@ -1,206 +1,148 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.R
-import com.example.data.model.*
-import com.example.data.repository.WorkoutRepository
-import com.example.ui.theme.AccentGold
-import com.example.ui.theme.AccentGreen
-import com.example.ui.theme.PrimaryOrange
-import com.example.ui.theme.SecondaryCyan
 
-@OptIn(ExperimentalMaterial3Api::class)
+data class MealPlan(
+    val title: String,
+    val time: String,
+    val calories: Int,
+    val proteinGrams: Int,
+    val description: String
+)
+
 @Composable
 fun DietScreen(
-    language: Language
+    modifier: Modifier = Modifier
 ) {
-    val dietPlans = WorkoutRepository().dietPlansList
-    var selectedPlan by remember { mutableStateOf(dietPlans.first()) }
+    val meals = listOf(
+        MealPlan("High-Protein Oatmeal", "Breakfast", 420, 25, "Rolled oats with chia seeds, whey protein powder, banana, and peanut butter."),
+        MealPlan("Grilled Chicken Salad", "Lunch", 510, 42, "Grilled chicken breast, mixed greens, avocado, quinoa, and olive oil dressing."),
+        MealPlan("Greek Yogurt Parfait", "Snack", 220, 18, "Non-fat Greek yogurt, honey, berries, and sliced almonds."),
+        MealPlan("Salmon & Sweet Potato", "Dinner", 580, 40, "Baked salmon fillet, roasted sweet potato wedges, and steamed broccoli.")
+    )
 
-    Column(
-        modifier = Modifier
+    LazyColumn(
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = L10n.getString("diet_nutrition", language),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+        item {
+            Text(
+                text = "Nutrition & Diet Plan",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "Fuel your body for maximum muscle recovery and energy",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        // Target Macros Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("diet_macros_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Daily Target Macros",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
 
-        // Diet Category selector chips
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(dietPlans) { plan ->
-                FilterChip(
-                    selected = selectedPlan == plan,
-                    onClick = { selectedPlan = plan },
-                    label = {
-                        Text(if (language == Language.NEPALI) plan.titleNp else plan.titleEn)
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Default.Restaurant, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        MacroItem("Calories", "2,150 kcal", MaterialTheme.colorScheme.primary)
+                        MacroItem("Protein", "140 g", MaterialTheme.colorScheme.secondary)
+                        MacroItem("Carbs", "210 g", MaterialTheme.colorScheme.tertiary)
+                        MacroItem("Fats", "60 g", MaterialTheme.colorScheme.onSurface)
                     }
-                )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        item {
+            Text(
+                text = "Recommended Daily Meals",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 20.dp)
-        ) {
-            // Hero Food Banner
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.img_diet_meal_1785671486642),
-                        contentDescription = "Meal Photo",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
-
-            // Macros Card
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = if (language == Language.NEPALI) selectedPlan.titleNp else selectedPlan.titleEn,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryOrange
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Text(
-                            text = if (language == Language.NEPALI) selectedPlan.descriptionNp else selectedPlan.descriptionEn,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround
-                        ) {
-                            MacroStatItem("Calories", "${selectedPlan.dailyCalories} kcal", PrimaryOrange)
-                            MacroStatItem("Protein", "${selectedPlan.proteinGrams}g", SecondaryCyan)
-                            MacroStatItem("Carbs", "${selectedPlan.carbsGrams}g", AccentGold)
-                            MacroStatItem("Fats", "${selectedPlan.fatGrams}g", AccentGreen)
-                        }
-                    }
-                }
-            }
-
-            // Meals Schedule
-            item {
-                Text(
-                    text = "Daily Meal Plan",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            items(selectedPlan.meals) { meal ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                ) {
+        items(meals) { meal ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("meal_card_${meal.time.lowercase()}"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = PrimaryOrange.copy(alpha = 0.15f),
-                            modifier = Modifier.size(46.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Restaurant, contentDescription = null, tint = PrimaryOrange)
-                            }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Restaurant,
+                                contentDescription = meal.time,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                            Text(text = meal.time, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
 
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = meal.time,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PrimaryOrange
-                                )
-                                Text(
-                                    text = "${meal.calories} kcal • ${meal.proteinGrams}g protein",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = SecondaryCyan
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            Text(
-                                text = if (language == Language.NEPALI) meal.nameNp else meal.nameEn,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            Text(
-                                text = if (language == Language.NEPALI) meal.descriptionNp else meal.descriptionEn,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
+                        Text(
+                            text = "${meal.calories} kcal • ${meal.proteinGrams}g Protein",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = meal.title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = meal.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -208,18 +150,9 @@ fun DietScreen(
 }
 
 @Composable
-private fun MacroStatItem(label: String, value: String, color: Color) {
+fun MacroItem(label: String, amount: String, color: androidx.compose.ui.graphics.Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-        )
+        Text(text = amount, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = color)
+        Text(text = label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
